@@ -40,7 +40,7 @@
     </div>
     <script src="https://ability-1251624226.file.myqcloud.com/base/vue.min.js"></script>
     <script type="module">
-        import { treeInitData } from "./treeInitData.js"
+        import { treeInitData } from "./treeInitData2.js"
         const NODE_SIZE = 40
         const Y_INTERVAL = 100
         const X_INTERVAL = 150
@@ -83,21 +83,21 @@
                 Layout_X() {
                     this.layout_X_deep(this.rootNode, MID_WIDTH)
                 },
-                layout_X_deep(node, leftVal){
+                // 递归遍历进行横向布局
+                layout_X_deep(node, leftVal) {
                     if (!node) return;
-                        // 距离中线居中显示
-                        node.left = leftVal - NODE_SIZE / 2
-                        // 子节点宽度
-                        let lineWidth = (node.children.length - 1) * X_INTERVAL + node.children.length * NODE_SIZE
-                        let baseLeft = leftVal - lineWidth / 2
-                        // 遍历子节点
-                        for (let i = 0; i < node.children.length; i++) {
-                            this.layout_X_deep(node.children[i], baseLeft + NODE_SIZE / 2 + i * (NODE_SIZE + X_INTERVAL))
-                        }
+                    // 距离中线居中显示
+                    node.left = leftVal - NODE_SIZE / 2
+                    // 子节点宽度
+                    let lineWidth = (node.children.length - 1) * X_INTERVAL + node.children.length * NODE_SIZE
+                    let baseLeft = leftVal - lineWidth / 2
+                    // 遍历子节点
+                    for (let i = 0; i < node.children.length; i++) {
+                        this.layout_X_deep(node.children[i], baseLeft + NODE_SIZE / 2 + i * (NODE_SIZE + X_INTERVAL))
+                    }
                 },
                 // 调整X
                 Adjust_X() {
-                    // this.hashTree
                     let flowList = null
                     for (let i = this.hashTree.length - 1; i >= 0; i--) {
                         flowList = this.hashTree[i]
@@ -108,19 +108,40 @@
                             // 如果间距小于X_INTERVAL
                             if (leftFlowItem && (flowItem.left - leftFlowItem.left) < X_INTERVAL) {
                                 const parentFlowItem = this.$_findCommonParentNode(leftFlowItem, flowItem)
-                                console.log(parentFlowItem)
-                                const leftOffset = X_INTERVAL - flowItem.left + leftFlowItem.left
+                                // 计算偏移量
+                                const leftOffset = X_INTERVAL + NODE_SIZE - flowItem.left + leftFlowItem.left
                                 this.$_translateXTree(parentFlowItem, leftOffset)
                                 const prevFlowItem = this.getNode(parentFlowItem.parent)
                                 // 居中调整
-                                // this.$_centerChild(prevFlowItem)
+                                this.$_centerChild(prevFlowItem)
+                                // 回到最后一层继续遍历
                                 i = this.hashTree.length
                             }
                         })
                     }
                 },
-                $_centerChild(flowItem){
-                    this.layout_X_deep(flowItem, flowItem.left)
+                // 传入一个父节点，所有子节点居中调整
+                $_centerChild(flowItem) {
+                    let leftOffset = 0
+                    if (flowItem.children && flowItem.children.length > 0) {
+                        // 单分支
+                        if (flowItem.children.length === 1) {
+                            const nextFlowItem = flowItem.children[0]
+                            leftOffset = flowItem.left - nextFlowItem.left
+                        } else { // 多分支
+                            const nextFlowItemFirst = flowItem.children[0]
+                            const nextFlowItemLatest = flowItem.children[flowItem.children.length - 1]
+                            // 计算偏移量
+                            leftOffset = flowItem.left - (nextFlowItemFirst.left + (nextFlowItemLatest.left - nextFlowItemFirst.left) / 2)
+                        }
+                        if (leftOffset) {
+                            flowItem.children.forEach(nextFlowItem => {
+                                if (nextFlowItem) {
+                                    this.$_translateXTree(nextFlowItem, leftOffset)
+                                }
+                            })
+                        }
+                    }
                 },
                 // 调整节点的left位置（X）
                 $_translateXTree(flowItem, offsetLeft) {
@@ -141,6 +162,7 @@
                         return this.$_findCommonParentNode(flowItem1PreFlowItem, flowItem2PreFlowItem)
                     }
                 },
+                // id获取节点
                 getNode(nodeId) {
                     return this.layoutTree.find(item => item.id === nodeId)
                 },
